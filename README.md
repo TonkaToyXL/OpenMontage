@@ -484,6 +484,16 @@ OpenMontage is built to be extended. The two most common contributions:
 
 See `docs/ARCHITECTURE.md` for the full technical reference, `docs/PROVIDERS.md` for the complete provider guide (setup, pricing, free tiers), and `AGENT_GUIDE.md` for the agent contract.
 
+### Join the Community
+
+We use [GitHub Discussions](https://github.com/calesthio/OpenMontage/discussions) to share work and ideas:
+
+- **[Show and Tell](https://github.com/calesthio/OpenMontage/discussions/categories/show-and-tell)** — Share videos you've made, prompts that worked well, or creative workflows you've discovered
+- **[Ideas](https://github.com/calesthio/OpenMontage/discussions/categories/ideas)** — Suggest new pipelines, tools, style playbooks, or integrations
+- **[Q&A](https://github.com/calesthio/OpenMontage/discussions/categories/q-a)** — Ask questions about setup, pipelines, or troubleshooting
+
+Made something cool? Post it in Show and Tell — we'd love to see what you build.
+
 ---
 
 ## Testing
