@@ -52,6 +52,11 @@ service_account*.json
 # Stray media downloads (test/scratch clips left in repo root)
 pexels_video_*.mp4
 
+# Large demo/output videos — don't commit to git
+assets/*.mp4
+*.mp4
+!pexels_video_*.mp4
+
 # Scratch/debug scripts
 scratch/
 
