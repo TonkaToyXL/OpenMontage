@@ -114,6 +114,7 @@ class TestBacklotServerApi:
         [
             ("/api/project/../state", 404),
             ("/api/project/C:/state", 400),
+            ("/api/project/%00/state", 400),
             ("/api/project/nope/state", 404),
         ],
     )
@@ -125,6 +126,23 @@ class TestBacklotServerApi:
         _make_project(projects_root, "film")
         response = client.get("/media/film/%2E%2E/project.json")
         assert response.status_code == 403
+
+    def test_project_id_rejects_symlink_outside_projects_root(self, client, projects_root):
+        outside = _make_project(projects_root.parent, "outside")
+        (projects_root / "linked").symlink_to(outside, target_is_directory=True)
+
+        response = client.get("/api/project/linked/state")
+
+        assert response.status_code == 403
+
+    def test_project_list_ignores_symlinks_outside_projects_root(self, client, projects_root):
+        outside = _make_project(projects_root.parent, "outside")
+        (projects_root / "linked").symlink_to(outside, target_is_directory=True)
+
+        response = client.get("/api/projects")
+
+        assert response.status_code == 200
+        assert "linked" not in {project["project_id"] for project in response.json()}
 
     def test_media_serves_range_requests(self, client, projects_root):
         project = _make_project(projects_root, "film")

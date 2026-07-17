@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 import time
 from pathlib import Path
 from typing import Optional
@@ -27,6 +28,7 @@ THUMB_WIDTHS = (320, 640, 960)
 _IGNORE_PARTS = {"node_modules", ".git", "__pycache__", ".cache"}
 
 SSE_HEARTBEAT_SECONDS = 15
+_PROJECT_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")
 
 
 class ChangeHub:
@@ -78,10 +80,14 @@ def _cached_summaries() -> list[dict]:
     for entry in sorted(PROJECTS_DIR.iterdir()):
         if not entry.is_dir() or entry.name.startswith(("_", ".")):
             continue
+        try:
+            project_dir = _safe_project_dir(entry.name)
+        except HTTPException:
+            continue
         cached = _summary_cache.get(entry.name)
         if cached is None:
             try:
-                cached = summarize_project(entry)
+                cached = summarize_project(project_dir)
             except Exception:
                 cached = {
                     "project_id": entry.name, "title": entry.name,
@@ -281,11 +287,20 @@ def create_app() -> FastAPI:
 
 
 def _safe_project_dir(project_id: str) -> Path:
-    # ':' rejects Windows drive-relative ids like "C:" (PROJECTS_DIR / "C:"
-    # collapses back to PROJECTS_DIR itself).
-    if any(c in project_id for c in "/\\:") or project_id in (".", ".."):
+    if not _PROJECT_ID_RE.fullmatch(project_id) or project_id in (".", ".."):
         raise HTTPException(status_code=400, detail="invalid project id")
-    project_dir = PROJECTS_DIR / project_id
+    projects_root = PROJECTS_DIR.resolve()
+    try:
+        entry = next((candidate for candidate in projects_root.iterdir() if candidate.name == project_id), None)
+        project_dir = entry.resolve() if entry is not None else None
+    except (OSError, RuntimeError, ValueError):
+        raise HTTPException(status_code=403, detail="unusable project path")
+    if project_dir is None:
+        raise HTTPException(status_code=404, detail=f"unknown project: {project_id}")
+    try:
+        project_dir.relative_to(projects_root)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="project escapes projects root")
     if not project_dir.is_dir():
         raise HTTPException(status_code=404, detail=f"unknown project: {project_id}")
     return project_dir

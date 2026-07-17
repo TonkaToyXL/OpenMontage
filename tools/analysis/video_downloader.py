@@ -24,6 +24,7 @@ from tools.base_tool import (
     ToolTier,
     ToolRuntime,
 )
+from tools.analysis.url_utils import detect_video_url_platform, normalize_http_url
 
 
 class VideoDownloader(BaseTool):
@@ -135,20 +136,7 @@ class VideoDownloader(BaseTool):
 
     def _detect_platform(self, url: str) -> str:
         """Detect platform from URL."""
-        url_lower = url.lower()
-        if "youtube.com/shorts" in url_lower or "youtu.be" in url_lower and "/shorts" in url_lower:
-            return "shorts"
-        if "youtube.com" in url_lower or "youtu.be" in url_lower:
-            return "youtube"
-        if "instagram.com" in url_lower:
-            return "instagram"
-        if "tiktok.com" in url_lower:
-            return "tiktok"
-        if "vimeo.com" in url_lower:
-            return "vimeo"
-        if "twitter.com" in url_lower or "x.com" in url_lower:
-            return "twitter"
-        return "other_url"
+        return detect_video_url_platform(url) or "other_url"
 
     def _extract_metadata(self, url: str) -> dict:
         """Extract metadata without downloading."""
@@ -179,7 +167,12 @@ class VideoDownloader(BaseTool):
             return {"error": str(e), "title": "", "duration": 0}
 
     def execute(self, inputs: dict[str, Any]) -> ToolResult:
-        url = inputs["url"]
+        url = normalize_http_url(inputs["url"])
+        if url is None:
+            return ToolResult(
+                success=False,
+                error="url must be a valid HTTP(S) URL without embedded credentials",
+            )
         output_dir = Path(inputs["output_dir"])
         dl_format = inputs.get("format", "video")
         max_res = inputs.get("max_resolution", "720p")
