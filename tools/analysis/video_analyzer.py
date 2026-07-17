@@ -27,6 +27,11 @@ from tools.base_tool import (
     ToolTier,
     ToolRuntime,
 )
+from tools.analysis.url_utils import (
+    detect_video_url_platform,
+    looks_like_url_reference,
+    normalize_http_url,
+)
 
 
 class VideoAnalyzer(BaseTool):
@@ -126,28 +131,25 @@ class VideoAnalyzer(BaseTool):
 
     def _is_url(self, source: str) -> bool:
         """Check if source is a URL vs local file."""
-        return source.startswith(("http://", "https://", "www."))
+        return normalize_http_url(source) is not None
 
     def _detect_platform(self, source: str) -> str:
         """Detect platform from URL."""
-        if not self._is_url(source):
-            return "local_file"
-        s = source.lower()
-        if "youtube.com/shorts" in s:
-            return "shorts"
-        if "youtube.com" in s or "youtu.be" in s:
-            return "youtube"
-        if "instagram.com" in s:
-            return "instagram"
-        if "tiktok.com" in s:
-            return "tiktok"
-        return "other_url"
+        return detect_video_url_platform(source) or "local_file"
 
     def _is_youtube(self, platform: str) -> bool:
         return platform in ("youtube", "shorts")
 
     def execute(self, inputs: dict[str, Any]) -> ToolResult:
         source = inputs["source"]
+        normalized_url = normalize_http_url(source)
+        if looks_like_url_reference(source):
+            if normalized_url is None:
+                return ToolResult(
+                    success=False,
+                    error="source URL must use HTTP(S) without embedded credentials",
+                )
+            source = normalized_url
         depth = inputs.get("analysis_depth", "standard")
         max_keyframes = inputs.get("max_keyframes", 20)
 
